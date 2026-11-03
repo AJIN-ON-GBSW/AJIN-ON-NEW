@@ -1,0 +1,14 @@
+node_modules/
+frontend/dist/
+backend/build/
+backend/.gradle/
+.local/
+.reference/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+*.tsbuildinfo
+__pycache__/
+*.py[cod]

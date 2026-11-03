@@ -1,0 +1,18 @@
+{
+  "page": "qstar",
+  "state": {
+    "admin": true,
+    "histYear": "2025",
+    "estEntity": "ajin",
+    "est": {
+      "ajin": {
+        "incoming": 8.874,
+        "claim": 33.862,
+        "qm": 10,
+        "out": 14.416,
+        "audit": 21.904
+      }
+    }
+  },
+  "referenceData": {}
+}

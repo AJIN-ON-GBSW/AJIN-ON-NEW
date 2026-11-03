@@ -1,0 +1,72 @@
+{
+  "page": "internal",
+  "state": {
+    "admin": true,
+    "round": "second",
+    "month": 11,
+    "picked": null,
+    "roundKind": {
+      "first": "불시",
+      "second": "정기"
+    },
+    "order": {
+      "first": [
+        "gyeongsan",
+        "hq",
+        "gueo",
+        "ipsil",
+        "juntek",
+        "geoncheon",
+        "mohwa",
+        "ajajin",
+        "wooshin",
+        "ajinelec"
+      ],
+      "second": [
+        "gyeongsan",
+        "hq",
+        "geoncheon",
+        "gueo",
+        "ipsil",
+        "juntek",
+        "mohwa",
+        "ajajin",
+        "wooshin",
+        "ajinusa",
+        "wooshinusa",
+        "jungeorgia",
+        "ajinelec"
+      ]
+    },
+    "dates": {
+      "first": {
+        "gyeongsan": "2026-04-09",
+        "hq": "2026-04-16",
+        "gueo": "2026-04-23",
+        "ipsil": "2026-04-30",
+        "juntek": "2026-05-07",
+        "geoncheon": "2026-05-14",
+        "mohwa": "2026-05-21",
+        "ajajin": "2026-05-28",
+        "wooshin": "2026-06-04",
+        "ajinelec": "2026-06-11"
+      },
+      "second": {
+        "gyeongsan": "2026-10-13",
+        "hq": "2026-10-15",
+        "geoncheon": "2026-10-17",
+        "gueo": "2026-10-22",
+        "ipsil": "2026-10-29",
+        "juntek": "2026-11-05",
+        "mohwa": "2026-11-10",
+        "ajajin": "2026-11-12",
+        "wooshin": "2026-11-19",
+        "ajinusa": "2026-11-24",
+        "wooshinusa": "2026-11-25",
+        "jungeorgia": "2026-11-26",
+        "ajinelec": ""
+      }
+    }
+  },
+  "referenceData": {}
+}
