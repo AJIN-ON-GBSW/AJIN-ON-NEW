@@ -1,0 +1,57 @@
+# Production stack for a single EC2 host. Paths are relative to the release directory
+# that remote-deploy.sh unpacks; secrets come from the server-only shared/.env file.
+name: ajin-on
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ajin_on
+      POSTGRES_USER: ajin_on
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - ajin-on-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ajin_on -d ajin_on"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  api:
+    image: eclipse-temurin:25-jre
+    restart: unless-stopped
+    user: "10001:10001"
+    working_dir: /app
+    command: ["java", "-jar", "/app/app.jar"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8080
+      DATABASE_URL: jdbc:postgresql://postgres:5432/ajin_on
+      DATABASE_USERNAME: ajin_on
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      STORAGE_ROOT: /app/storage
+      ALLOWED_ORIGINS: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError
+    mem_limit: 900m
+    volumes:
+      - ./app.jar:/app/app.jar:ro
+      - ${AJIN_SHARED:-/opt/ajin-on/shared}/storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: nginx:1.29-alpine
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${AJIN_SHARED:-/opt/ajin-on/shared}/nginx-auth.conf:/etc/nginx/snippets/auth.conf:ro
+      - ${AJIN_SHARED:-/opt/ajin-on/shared}/htpasswd:/etc/nginx/htpasswd:ro
+    depends_on:
+      - api
+
+volumes:
+  ajin-on-postgres-data:

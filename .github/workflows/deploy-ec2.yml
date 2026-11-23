@@ -1,0 +1,96 @@
+name: Deploy EC2
+
+# Builds the React bundle and Spring Boot JAR on GitHub, then ships them to the EC2 host
+# over SSH. Required repository secrets: EC2_HOST, EC2_USER, EC2_PASSWORD.
+# Optional: EC2_WEB_PORT (default 3000), BASIC_AUTH_USER, BASIC_AUTH_PASSWORD.
+on:
+  push:
+    branches: [claude/ec2-deployment-setup-uyrt3z]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      SSHPASS: ${{ secrets.EC2_PASSWORD }}
+      WEB_PORT: ${{ secrets.EC2_WEB_PORT || '3000' }}
+    steps:
+      - name: Check deployment secrets
+        run: |
+          missing=""
+          for name in EC2_HOST EC2_USER SSHPASS; do [ -n "${!name}" ] || missing="$missing $name"; done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:${missing/SSHPASS/EC2_PASSWORD}. Add them in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6.4.1
+
+      - name: Build frontend
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Build API
+        working-directory: backend
+        run: ./gradlew bootJar --no-daemon
+
+      - name: Package release
+        run: |
+          mkdir -p release/web
+          cp -R frontend/dist/. release/web/
+          cp backend/build/libs/ajin-on-api-0.1.0.jar release/app.jar
+          cp deploy/compose.yaml deploy/nginx.conf release/
+          tar -czf ajin-on.tar.gz -C release .
+          ls -lh ajin-on.tar.gz
+
+      - name: Upload and deploy over SSH
+        env:
+          BASIC_AUTH_USER: ${{ secrets.BASIC_AUTH_USER }}
+          BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+          release_id="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          opts=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o PubkeyAuthentication=no -o PreferredAuthentications=password,keyboard-interactive -o ConnectTimeout=20 -o ServerAliveInterval=30)
+          target="$EC2_USER@$EC2_HOST"
+          sshpass -e scp "${opts[@]}" ajin-on.tar.gz deploy/remote-deploy.sh "$target:/tmp/"
+          # Pass runtime values on stdin so they never appear in the remote process list.
+          {
+            printf 'export PUBLIC_ORIGIN=%q WEB_PORT=%q\n' "http://$EC2_HOST:$WEB_PORT" "$WEB_PORT"
+            printf 'export BASIC_AUTH_USER=%q BASIC_AUTH_PASSWORD=%q\n' "$BASIC_AUTH_USER" "$BASIC_AUTH_PASSWORD"
+            printf 'bash /tmp/remote-deploy.sh %q /tmp/ajin-on.tar.gz </dev/null\n' "$release_id"
+          } | sshpass -e ssh "${opts[@]}" "$target" 'bash -s'
+
+      - name: Verify public URL
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS "http://$EC2_HOST:$WEB_PORT/actuator/health" | grep -q '"UP"'; then
+              echo "Deployed: http://$EC2_HOST:$WEB_PORT/"; exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::http://$EC2_HOST:$WEB_PORT is not reachable from GitHub; check the security group."
+          exit 1
