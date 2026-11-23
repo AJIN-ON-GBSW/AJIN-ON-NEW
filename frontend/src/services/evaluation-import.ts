@@ -108,10 +108,10 @@ export async function parseEvaluationWorkbook(file: File | Blob | ArrayBuffer): 
   }
 }
 
-export async function importEvaluations(rows: readonly EvaluationImportRow[]): Promise<EvaluationImportResult> {
+export async function importEvaluations(rows: readonly EvaluationImportRow[], roundInfo?: {evaluator:string;auditType:string;criteriaVersion:string}): Promise<EvaluationImportResult> {
   const checked = parseEvaluationData([EVALUATION_HEADERS, ...rows.map((row) => EVALUATION_FIELDS.map((field) => row[field]))]);
   if (checked.errors.length) throw new EvaluationImportValidationError(checked.errors);
-  return request<EvaluationImportResult>('/api/evaluations/import', { method: 'POST', body: JSON.stringify({ rows: checked.rows }) });
+  return request<EvaluationImportResult>('/api/evaluations/import', { method: 'POST', body: JSON.stringify({ rows: checked.rows, roundInfo }) });
 }
 
 export function evaluationImportIssues(error: unknown, originalRows?: readonly number[]): ImportIssue[] {

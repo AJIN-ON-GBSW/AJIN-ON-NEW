@@ -17,7 +17,7 @@ export interface ImportedEvaluationRow {
 const TYPES: Record<string, string> = {
   internal: '내부 현장평가', qstar: '품질5스타', sq: 'SQ평가', iatf: 'IATF 16949',
 };
-const JUDGMENTS: Record<string, string> = {
+export const JUDGMENTS: Record<string, string> = {
   b: '보완', i: '일부미흡', d: '다수미흡', y: '양호', x: '미기재', major: 'Major', minor: 'Minor', ofi: 'OFI',
 };
 const COLORS: Record<string, [string, string]> = {
@@ -62,7 +62,9 @@ export function importedEvaluationRows(source: EvaluationExportSource): Evaluati
     const parsedDate = new Date(`${date}T00:00:00Z`);
     if (!Number.isFinite(parsedDate.valueOf()) || parsedDate.toISOString().slice(0, 10) !== date) continue;
     const item = text(row.item);
+    const info = row.roundInfo as Record<string,unknown>|undefined;
     result.push({
+      ...(info ? {evaluator:text(info.evaluator),auditType:text(info.auditType),criteriaVersion:text(info.criteriaVersion)} : {}),
       type: TYPES[kind]!, year, date, round, plant: text(row.plant),
       managementNumber: text(row.managementNumber), itemCode: itemCode(item), item,
       judgmentCode: judgment, judgment: JUDGMENTS[judgment]!,
@@ -92,7 +94,8 @@ export function combinedEvaluationRows(source: EvaluationExportSource): Evaluati
       const eventCodes = Array.isArray(source.J) ? source.J[event.id] : source.J?.[String(event.id)];
       const codes = (eventCodes ?? '').split('|');
       let sequence = 0;
-      Object.entries(event.items).forEach(([code, count], itemIndex) => {
+      // PostgreSQL JSONB reorders object keys. Judgment groups follow numeric checklist order.
+      Object.entries(event.items).sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true })).forEach(([code, count], itemIndex) => {
         const total = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
         for (let index = 0; index < total; index += 1) {
           sequence += 1;

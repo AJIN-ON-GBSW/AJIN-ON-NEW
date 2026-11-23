@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.HashSet;
+import jakarta.validation.constraints.Size;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +30,7 @@ public class EvaluationImportService {
         this.jdbc = jdbc; this.pages = pages; this.mapper = mapper;
     }
 
+    public record RoundInfo(@Size(max=50) String evaluator, @Size(max=20) String auditType, @Size(max=80) String criteriaVersion) {}
     public record EvaluationRow(String type, int year, String date, int round, String plant, String managementNumber,
         String item, String judgment, String nonconformance, String improvement, String actionStatus) {}
     public record ImportResult(int imported, int skipped, PageService.Snapshot snapshot) {}
@@ -43,7 +44,7 @@ public class EvaluationImportService {
     }
 
     @Transactional
-    public ImportResult importRows(List<JsonNode> input) {
+    public ImportResult importRows(List<JsonNode> input, RoundInfo info) {
         List<EvaluationRow> validated = validate(input);
         // A lock serializes simultaneous imports and preserves unrelated filters and screen edits.
         jdbc.sql("SELECT page FROM page_state WHERE page = 'eval-history' FOR UPDATE").query(String.class).single();
@@ -54,14 +55,22 @@ public class EvaluationImportService {
             throw new ApiException(409, "INVALID_IMPORT_STORAGE", "기존 평가 등록 데이터 형식을 확인해 주세요.");
         var rows = new ArrayList<Object>();
         if (previous instanceof List<?> list) rows.addAll(list);
-        Set<List<Object>> identities = new HashSet<>();
-        for (Object existing : rows) if (existing instanceof Map<?, ?> row) identities.add(identity(row));
+        Map<List<Object>, Map<?,?>> identities = new java.util.HashMap<>();
+        for (Object existing : rows) if (existing instanceof Map<?, ?> row) identities.put(identity(row),row);
         int imported = 0;
         int skipped = 0;
         for (EvaluationRow row : validated) {
             Map<String, Object> values = mapper.convertValue(row, MAP);
-            if (identities.add(identity(values))) { rows.add(values); imported++; }
-            else skipped++;
+            if (info != null) {
+                if (!row.type().equals("내부 현장평가") || !Set.of("양호","보완","일부미흡","다수미흡").contains(row.judgment()))
+                    throw new ApiException(400,"INVALID_REVIEW","내부 평가이력 판정은 양호, 보완, 일부미흡, 다수미흡 중 선택해 주세요.");
+                values.put("roundInfo", mapper.convertValue(info, MAP));
+            }
+            var prior = identities.putIfAbsent(identity(values),values);
+            if (prior == null) { rows.add(values); imported++; }
+            else if (info != null && !prior.equals(values)) {
+                throw new ApiException(409,"REVIEW_CHANGED","이미 등록된 평가와 내용이 다릅니다. 수정된 평가를 새로 생성해 등록해 주세요.");
+            } else skipped++;
         }
         if (imported == 0) return new ImportResult(0, skipped, current);
         state.put("importedRows", rows);

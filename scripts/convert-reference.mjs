@@ -28,7 +28,9 @@ function node(n,locals){
  const ps=[];
  for(const [key,value] of Object.entries(n.attribs)){
   if(key.startsWith('hint-'))continue;
-  let v=val(value,locals);
+  const assessmentLinks = {'결과보고':'/evaluation-report','평가 작성 도우미 열기':'/assistant/','관찰내용 입력하기 ›':'/assistant/'};
+  const destination = key==='href' && value==='#' && assessmentLinks[n.children?.[0]?.data?.trim()];
+  let v=val(destination || value,locals);
   if(key==='style')v='styleObject('+v+')';
   if(['disabled','checked','selected','multiple','readOnly'].includes(key)&&value==='')v='true';
   ps.push(JSON.stringify(attrs[key]||key)+':'+v);
@@ -55,6 +57,7 @@ for(const [name,source] of Object.entries(pages)){
  // The design used truthiness, which makes the number zero disappear from numeric fields.
  if(name==='Performance')logic=logic.replaceAll("st.data[key(rd[0], c.i)] || ''","st.data[key(rd[0], c.i)] ?? ''").replaceAll("st.scores[refKey] || ''","st.scores[refKey] ?? ''");
  if(name==='EvalHistory'){logic=logic.replace('self.setState({ exportDone: true });','void self.exportWorkbook();');logic=logic.replace('render(){ const v=this.renderVals();','render(){ const v=this.renderVals();');}
+ if(name==='Main')logic=logic.replace(/(mk\('평가 작성 도우미'[^\n]*?)'Internal.dc.html'/, "$1'/assistant/'");
  const pos=logic.lastIndexOf('}');
  logic=logic.slice(0,pos)+'\n  render(){ const v=this.renderVals(); '+(name==='Performance'?'const memoKey=this.state.entity+\"|\"+this.state.item;v.memoValue=this.state.memos?.[memoKey]??\"\";v.setMemo=e=>this.setState({memos:{...(this.state.memos||{}),[memoKey]:e.target.value}});':'')+(name==='EvalHistory'?'Object.assign(v,enhanceEvaluationValues(this,v));const plan=planEvaluationWorkbook(this); v.exportName=plan.filename; v.exportSummary=`총 ${plan.rows.length.toLocaleString(\"ko-KR\")}행 · 시트 ${plan.sheets.length}개`;':'')+' return React.createElement(React.Fragment,null,'+children(dom,new Set())+'); }\n'+logic.slice(pos);
  const imports='// React implementation of the supplied AJIN ON screen; source layout and business calculations preserved.\nimport React from "react";\nimport {PageComponent,styleObject} from "../runtime/PageComponent.jsx";\n'+(name==='EvalHistory'?'import {planEvaluationWorkbook} from "../services/export-workbook";\nimport {enhanceEvaluationValues} from "../services/imported-evaluations";\n':'');

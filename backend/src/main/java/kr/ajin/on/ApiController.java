@@ -26,9 +26,9 @@ public class ApiController {
     private final DocumentService documents;
     private final EvaluationImportService evaluations;
     ApiController(PageService pages, DocumentService documents, EvaluationImportService evaluations) { this.pages = pages; this.documents = documents; this.evaluations = evaluations; }
-    public record ImportEvaluations(List<JsonNode> rows) {}
+    public record ImportEvaluations(List<JsonNode> rows, @Valid EvaluationImportService.RoundInfo roundInfo) {}
     @PostMapping("/evaluations/import")
-    EvaluationImportService.ImportResult importEvaluations(@RequestBody ImportEvaluations body) { return evaluations.importRows(body.rows()); }
+    EvaluationImportService.ImportResult importEvaluations(@RequestBody ImportEvaluations body) { return evaluations.importRows(body.rows(), body.roundInfo()); }
 
     public record SaveState(@NotNull Map<String, Object> state, @NotNull @PositiveOrZero Long revision) {}
 

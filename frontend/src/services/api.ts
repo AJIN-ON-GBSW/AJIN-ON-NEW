@@ -16,12 +16,12 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestInit = {}, timeoutMs = 20_000): Promise<T> {
   const timeout = new AbortController();
   const abort = () => timeout.abort(options.signal?.reason);
   options.signal?.addEventListener('abort', abort, { once: true });
   if (options.signal?.aborted) abort();
-  const timer = window.setTimeout(() => timeout.abort(), 20_000);
+  const timer = window.setTimeout(() => timeout.abort(), timeoutMs);
   const headers = new Headers(options.headers);
   if (options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
   headers.set('Accept', 'application/json');

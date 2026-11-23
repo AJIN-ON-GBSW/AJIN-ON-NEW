@@ -1,5 +1,5 @@
 import writeExcelFile, { type Cell, type SheetData } from 'write-excel-file/universal';
-import { combinedEvaluationRows } from './imported-evaluations';
+import { combinedEvaluationRows, JUDGMENTS } from './imported-evaluations';
 
 /** The reference contains aggregate findings, not nonconformance or corrective-action text. */
 export interface EvaluationEvent {
@@ -22,6 +22,9 @@ export interface EvaluationExportSource {
 }
 
 export interface EvaluationExportRow {
+  evaluator?: string;
+  auditType?: string;
+  criteriaVersion?: string;
   type: string;
   year: number;
   date: string;
@@ -53,9 +56,6 @@ export interface EvaluationWorkbookPlan {
   extraSheetCount: number;
 }
 
-const JUDGMENTS: Record<string, string> = {
-  b: '보완', i: '일부미흡', d: '다수미흡', y: '양호', x: '미기재', major: 'Major', minor: 'Minor', ofi: 'OFI',
-};
 const COLUMNS = [
   '평가 종류', '연도', '점검일', '차수', '공장', '관리번호', '평가항목', '판정',
   '부적합 사항', '개선대책', '조치 상태',

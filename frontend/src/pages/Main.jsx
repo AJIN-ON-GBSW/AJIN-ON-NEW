@@ -47,7 +47,7 @@ export default class Main extends PageComponent {
         mk('실시간 변동사항', 'M12 3l9.5 17h-19z M12 10v4 M12 17h.01', '#ffe8e8', '#d23f3f', '#', 'NEW'),
         mk('평가원', 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 1 0 0 7 M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5 M16 4.5a3.3 3.3 0 0 1 0 6.3 M18 14.8c2 .7 3.2 2.5 3.5 5.2', '#f3e8ff', '#8b4fd1'),
         mk('예상점수 뽑기', 'M6 3h12v18H6z M9 7h6 M9 12h.01 M12 12h.01 M15 12h.01 M9 16h.01 M12 16h.01 M15 16h.01', '#fff1dc', '#d88411', 'Qstar.dc.html'),
-        mk('평가 작성 도우미', 'M4 20l4-1 11-11-3-3L5 16z M14 6l3 3', '#e8f0fe', '#2f6fd6', 'Internal.dc.html'),
+        mk('평가 작성 도우미', 'M4 20l4-1 11-11-3-3L5 16z M14 6l3 3', '#e8f0fe', '#2f6fd6', '/assistant/'),
         mk('자료실', 'M3 6h6l2 2h10v11H3z', '#eaeef6', '#3b5687'),
         mk('회의록', 'M4 5h16v16H4z M4 10h16 M8 3v4 M16 3v4', '#e9f6e4', '#3f8f2f')
       ]

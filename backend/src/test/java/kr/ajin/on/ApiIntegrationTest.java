@@ -83,6 +83,20 @@ class ApiIntegrationTest {
         assertTrue(tree(original).get("CRIT").size() > 20);
     }
 
+    @Test void assessmentWorkbookChangesAreAtomicAndRevisionChecked() throws Exception {
+        String url = "/api/assessment/library";
+        String key = "metrics/2026-1";
+        var first = request("POST", url, List.of(Map.of("name", key, "data", Map.of("plants", Map.of("경산", Map.of("score", 0))))));
+        assertEquals(200, first.statusCode());
+        var rev = tree(first).get(key).asText();
+        var conflict = request("POST", url, List.of(Map.of("name", "hist/test", "data", Map.of("k", "internal__[]")),
+            Map.of("name", key, "revision", UUID.randomUUID(), "data", Map.of())));
+        assertEquals(409, conflict.statusCode());
+        assertFalse(request("GET", url, null).body().contains("hist/test"));
+        assertTrue(request("GET", url, null).body().contains(rev));
+        assertEquals(200, request("POST", url, List.of(Map.of("name", key, "revision", rev))).statusCode());
+    }
+
     @Test void statePersistsWithOptimisticRevisionAndHistory() throws Exception {
         String path = "/api/pages/performance/state";
         long revision = tree(request("GET", path, null)).get("revision").asLong();
@@ -231,6 +245,15 @@ class ApiIntegrationTest {
         var history = tree(request("GET", "/api/pages/eval-history/history", null));
         assertEquals(revision + 1, history.get(0).get("revision").asLong());
         assertEquals(2, history.get(0).get("state").get("importedRows").size());
+
+        var info = Map.of("evaluator", "평가원", "auditType", "불시", "criteriaVersion", "2026");
+        var reviewed = Map.of("rows", List.of(third), "roundInfo", info);
+        var saved = tree(request("POST", "/api/evaluations/import", reviewed));
+        assertEquals(1, saved.path("imported").asInt());
+        assertEquals("불시", saved.at("/snapshot/state/importedRows/2/roundInfo/auditType").asText());
+        assertEquals(1, tree(request("POST", "/api/evaluations/import", reviewed)).path("skipped").asInt());
+        third.put("improvement", "수정된 대책");
+        assertEquals(409, request("POST", "/api/evaluations/import", reviewed).statusCode());
     }
 
     @Test void validatesRequestsAndRejectsForeignBrowserOrigin() throws Exception {
